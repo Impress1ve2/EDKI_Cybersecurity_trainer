@@ -13,8 +13,8 @@
 
   /* ---------- сховище ---------- */
   const fresh = () => ({ stats: {}, history: [], theme: "auto", exam: null, marks: {}, activity: {}, goal: 20,
-    coins: 0, earned: 0, owned: { classic: 1, seed: 1, rain: 1 }, equipped: { theme: "classic", badge: "seed", track: "rain" },
-    claimed: {}, bestStreak: 0, goalPaid: "", music: { on: false, vol: 0.5 } });
+    coins: 0, earned: 0, owned: { classic: 1, seed: 1, none: 1 }, equipped: { theme: "classic", badge: "seed", bg: "none" },
+    claimed: {}, bestStreak: 0, goalPaid: "", freezes: 0, frozen: {}, focus: null, focusDone: 0 });
   let mem = null;
   function load() {
     if (mem) return mem;
@@ -129,6 +129,8 @@
     const t = load().theme;
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
     else document.documentElement.removeAttribute("data-theme");
+    const bg = load().equipped.bg;
+    if (bg && bg !== "none") document.documentElement.setAttribute("data-bg", bg); else document.documentElement.removeAttribute("data-bg");
     const acc = itemById(load().equipped.theme);
     if (acc && acc.id !== "classic") { document.documentElement.setAttribute("data-accent", acc.id); document.documentElement.style.setProperty("--a", acc.color); }
     else { document.documentElement.removeAttribute("data-accent"); document.documentElement.style.removeProperty("--a"); }
@@ -234,9 +236,9 @@
         buildGooMenu(page),
         h("div", { style: "flex:1" }),
         badge && badge.id !== "seed" ? h("span", { class: "hbadge", title: "Значок: " + badge.name, text: badge.emoji }) : null,
-        buildCoinChip(), buildMusicToggle(), slot));
+        buildCoinChip(), buildFocusTimer(), slot));
     document.body.prepend(header);
-    music.armPending();
+    checkFocus(); applyFreeze();
   }
 
   /* ---------- серія, закладки, готовність ---------- */
@@ -246,11 +248,23 @@
     return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
   }
   function streak() {
-    const a = load().activity, d = new Date();
-    if (!(a[todayKey(d)] > 0)) d.setDate(d.getDate() - 1);
+    const S = load(), a = S.activity, fr = S.frozen || {}, d = new Date();
+    const ok = (k) => a[k] > 0 || fr[k];
+    if (!ok(todayKey(d))) d.setDate(d.getDate() - 1);
     let n = 0;
-    while (a[todayKey(d)] > 0) { n++; d.setDate(d.getDate() - 1); }
+    while (ok(todayKey(d))) { if (a[todayKey(d)] > 0) n++; d.setDate(d.getDate() - 1); }
     return n;
+  }
+  // «Заморозка серії»: якщо вчора був пропуск, а позавчора — активність, витрачаємо заморозку
+  function applyFreeze() {
+    const S = load(); S.frozen = S.frozen || {};
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const b = new Date(y); b.setDate(b.getDate() - 1);
+    const ky = todayKey(y), kb = todayKey(b);
+    if ((S.freezes || 0) <= 0 || S.activity[ky] > 0 || S.frozen[ky]) return;
+    if (!(S.activity[kb] > 0 || S.frozen[kb])) return;
+    S.freezes--; S.frozen[ky] = 1; save();
+    toast("🧊 Заморозка врятувала вашу серію!");
   }
   const isMarked = (id) => !!load().marks[id];
   function toggleMark(id) { const m = load().marks; m[id] ? delete m[id] : (m[id] = 1); save(); }
@@ -362,15 +376,17 @@
     { id: "shield", type: "badge", name: "Захисник", desc: "Тримає периметр", price: 50, emoji: "🛡️" },
     { id: "brain", type: "badge", name: "Мозок", desc: "Знає ДСТУ напам'ять", price: 80, emoji: "🧠" },
     { id: "legend", type: "badge", name: "Легенда", desc: "Ексклюзив за серію 30 днів", lock: 30, emoji: "👑" },
-    { id: "rain", type: "track", name: "Тихий дощ", desc: "Білий шум дощу для читання", price: 0, emoji: "🌧️" },
-    { id: "lofi", type: "track", name: "Lo-fi вечір", desc: "Теплі акорди та м'який біт", price: 70, emoji: "🎧" },
-    { id: "focus", type: "track", name: "Фокус", desc: "Бінауральний тон 6 Гц (у навушниках)", price: 100, emoji: "🎯" },
-    { id: "space", type: "track", name: "Космос", desc: "Ексклюзив за серію 14 днів", lock: 14, emoji: "🌌" },
+    { id: "none", type: "bg", name: "Чистий", desc: "Класичний фон без візерунка", price: 0, emoji: "⬜" },
+    { id: "grid", type: "bg", name: "Сітка", desc: "Тонка зошитова сітка", price: 50, emoji: "▦" },
+    { id: "dots", type: "bg", name: "Крапки", desc: "М'який крапчастий візерунок", price: 50, emoji: "∷" },
+    { id: "aurora", type: "bg", name: "Аврора", desc: "Переливи кольорів у кутах", price: 80, emoji: "🌌" },
+    { id: "matrix", type: "bg", name: "Матриця", desc: "Ексклюзив за серію 14 днів", lock: 14, emoji: "🟩" },
+    { id: "freeze", type: "boost", name: "Заморозка серії", desc: "Автоматично рятує серію, якщо пропустити один день (до 3 шт.)", price: 40, emoji: "🧊" },
   ];
   const MILESTONES = [
     { id: "m3", days: 3, coins: 20, item: null },
     { id: "m7", days: 7, coins: 50, item: "gold" },
-    { id: "m14", days: 14, coins: 100, item: "space" },
+    { id: "m14", days: 14, coins: 100, item: "matrix" },
     { id: "m30", days: 30, coins: 250, item: "legend" },
   ];
   const itemById = (id) => ITEMS.find((i) => i.id === id);
@@ -389,6 +405,12 @@
   }
   function buy(id) {
     const S = load(), it = itemById(id);
+    if (it && it.type === "boost") {
+      if ((S.freezes || 0) >= 3 || (S.coins || 0) < it.price) return false;
+      S.coins -= it.price; S.freezes = (S.freezes || 0) + 1; save();
+      window.dispatchEvent(new CustomEvent("edki:coins", { detail: 0 }));
+      return true;
+    }
     if (!it || S.owned[id] || it.lock || (S.coins || 0) < it.price) return false;
     S.coins -= it.price; S.owned[id] = 1; save();
     window.dispatchEvent(new CustomEvent("edki:coins", { detail: 0 }));
@@ -398,8 +420,7 @@
     const S = load(), it = itemById(id);
     if (!it || !S.owned[id]) return;
     S.equipped[it.type] = id; save();
-    if (it.type === "theme") applyTheme();
-    if (it.type === "track") music.setTrack(id);
+    if (it.type === "theme" || it.type === "bg") applyTheme();
     window.dispatchEvent(new CustomEvent("edki:equip"));
   }
   function claim(id) {
@@ -410,154 +431,50 @@
     return true;
   }
 
-  /* ---------- музика (синтезується в браузері, файли не потрібні) ---------- */
-  const music = (() => {
-    let ctx = null, master = null, revIn = null, bus = null, live = [], timer = 0, playing = false, pending = false, noiseBuf = null, startedAt = 0;
-    const cfg = () => { const S = load(); S.music = Object.assign({ on: false, vol: 0.5 }, S.music); return S.music; };
-    const emit = () => window.dispatchEvent(new CustomEvent("edki:music"));
-    const mf = (m) => 440 * Math.pow(2, (m - 69) / 12);
-
-    function init() {
-      if (ctx) return;
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      master = ctx.createGain(); master.gain.value = cfg().vol; master.connect(ctx.destination);
-      const conv = ctx.createConvolver(), len = ctx.sampleRate * 2.4, ir = ctx.createBuffer(2, len, ctx.sampleRate);
-      for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
-      conv.buffer = ir; revIn = ctx.createGain(); revIn.gain.value = 0.4; revIn.connect(conv); conv.connect(master);
-      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 5, ctx.sampleRate);
-      const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-    }
-    function noiseSrc(loop) { const n = ctx.createBufferSource(); n.buffer = noiseBuf; n.loop = loop; return n; }
-    function filt(type, f, q) { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; if (q) b.Q.value = q; return b; }
-    function gain(v) { const g = ctx.createGain(); g.gain.value = v; return g; }
-    function tone(freq, type, t, dur, att, peak, out, cut) {
-      const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
-      const lp = filt("lowpass", cut || 4000), g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(lp); lp.connect(g); g.connect(out); g.connect(revIn);
-      o.start(t); o.stop(t + dur + 0.05);
-    }
-    function burst(t, dur, type, f, peak, out) {
-      const n = noiseSrc(false), fl = filt(type, f), g = ctx.createGain();
-      g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      n.connect(fl); fl.connect(g); g.connect(out); n.start(t, Math.random() * 3); n.stop(t + dur + 0.02);
-    }
-    function kick(t, out) {
-      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine";
-      o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.18);
-      g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.3);
-    }
-    function loopNoise(f, type, vol, out) { const n = noiseSrc(true); n.connect(filt(type, f)); const g = gain(vol); n.disconnect(); n.connect(filt(type, f)).connect(g).connect(out); n.start(); live.push(n); }
-
-    const TRACKS = {
-      rain(out) {
-        const n = noiseSrc(true), bp = filt("bandpass", 1400, 0.4), g = gain(0.6);
-        n.connect(bp); bp.connect(g); g.connect(out); n.start(); live.push(n);
-        loopNoise(260, "lowpass", 0.5, out);
-      },
-      lofi(out) {
-        const chords = [[48, 52, 55, 59], [45, 48, 52, 55], [41, 45, 48, 52], [43, 47, 50, 53]], pent = [72, 74, 76, 79, 81, 84];
-        let step = 0, next = ctx.currentTime + 0.1;
-        loopNoise(3500, "highpass", 0.025, out);
-        const tick = () => {
-          while (next < ctx.currentTime + 0.6) {
-            const k = step % 8, t = next;
-            if (k === 0) chords[((step / 8) | 0) % 4].forEach((m) => tone(mf(m), "triangle", t, 3.8, 0.5, 0.09, out, 900));
-            if (k === 0 || k === 5) kick(t, out);
-            if (k === 2 || k === 6) burst(t, 0.16, "bandpass", 1800, 0.14, out);
-            if (k % 2 === 1) burst(t, 0.05, "highpass", 7000, 0.04, out);
-            if (Math.random() < 0.35) tone(mf(pent[(Math.random() * pent.length) | 0]), "sine", t + Math.random() * 0.1, 0.9, 0.01, 0.08, out, 3000);
-            step++; next += 0.5;
-          }
-        };
-        tick(); timer = setInterval(tick, 200);
-      },
-      focus(out) {
-        [[196, -1], [202, 1]].forEach(([f, pan]) => {
-          const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = f;
-          const p = ctx.createStereoPanner ? ctx.createStereoPanner() : gain(1); if (p.pan) p.pan.value = pan;
-          const g = gain(0.14); o.connect(p); p.connect(g); g.connect(out); o.start(); live.push(o);
-        });
-        loopNoise(400, "lowpass", 0.12, out);
-      },
-      space(out) {
-        const lp = filt("lowpass", 500), lfo = ctx.createOscillator(), lg = gain(250), g = gain(0.14);
-        lfo.frequency.value = 0.07; lfo.connect(lg); lg.connect(lp.frequency); lfo.start(); live.push(lfo);
-        [110, 164.8, 220.5].forEach((f) => { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.connect(lp); o.start(); live.push(o); });
-        lp.connect(g); g.connect(out); g.connect(revIn);
-        const hi = [659, 784, 988, 1175];
-        timer = setInterval(() => tone(hi[(Math.random() * hi.length) | 0], "sine", ctx.currentTime, 4, 1, 0.05, out, 3000), 3200);
-      },
-    };
-
-    function cleanup(fade) {
-      clearInterval(timer);
-      const old = bus, olive = live; bus = null; live = [];
-      if (old) {
-        const t = ctx.currentTime; old.gain.cancelScheduledValues(t); old.gain.setValueAtTime(old.gain.value, t); old.gain.linearRampToValueAtTime(0, t + fade);
-        setTimeout(() => { olive.forEach((n) => { try { n.stop(); } catch (e) {} }); try { old.disconnect(); } catch (e) {} }, fade * 1000 + 80);
-      }
-    }
-    function start(id) {
-      id = id || load().equipped.track;
-      init(); if (ctx.state === "suspended") ctx.resume();
-      cleanup(0.25);
-      bus = ctx.createGain(); bus.gain.setValueAtTime(0, ctx.currentTime); bus.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.9); bus.connect(master);
-      (TRACKS[id] || TRACKS.rain)(bus);
-      if (!playing) startedAt = Date.now();
-      playing = true; pending = false; cfg().on = true; save(); emit();
-    }
-    function stop() { if (ctx) cleanup(0.35); playing = false; pending = false; cfg().on = false; save(); emit(); }
-    function armPending() {
-      if (!cfg().on) return;
-      pending = true;
-      const go = (e) => {
-        removeEventListener("pointerdown", go, true); removeEventListener("keydown", go, true);
-        if (e.target && e.target.closest && e.target.closest(".music-toggle")) { pending = false; emit(); return; }
-        if (pending) start();
-      };
-      addEventListener("pointerdown", go, true); addEventListener("keydown", go, true);
-    }
-    return {
-      toggle() { playing ? stop() : start(); },
-      start, stop,
-      setTrack(id) { if (playing) start(id); else emit(); },
-      setVolume(v) { cfg().vol = v; save(); if (master) master.gain.setTargetAtTime(v, ctx.currentTime, 0.05); },
-      get volume() { return cfg().vol; },
-      get on() { return playing; }, get pending() { return pending; },
-      get elapsed() { return playing ? (Date.now() - startedAt) / 1000 : 0; },
-      armPending,
-    };
-  })();
-
-  /* Музичний перемикач: «платівка» зі спінінгом, хвилею, кільцем помодоро (25 хв) та плавним play/pause */
-  function buildMusicToggle() {
-    const POMO = 25 * 60, R = 19, CIRC = 2 * Math.PI * R;
-    const ring = s("circle", { cx: 22, cy: 22, r: R, class: "mt-ring", "stroke-dasharray": CIRC, "stroke-dashoffset": CIRC });
-    const track = s("circle", { cx: 22, cy: 22, r: R, class: "mt-track" });
-    const svg = s("svg", { viewBox: "0 0 44 44", class: "mt-svg", "aria-hidden": "true" }); svg.append(track, ring);
-    const play = h("span", { class: "mt-ic mt-play", text: "▶" }), pause = h("span", { class: "mt-ic mt-pause", text: "❚❚" });
-    const disc = h("span", { class: "mt-disc" }, h("span", { class: "mt-art", text: itemById(load().equipped.track).emoji }));
-    const wrap = h("span", { class: "mt-wrap" }, svg, disc, play, pause);
-    const eq = h("span", { class: "eq", "aria-hidden": "true" }, h("i"), h("i"), h("i"), h("i"));
-    const btn = h("button", { class: "music-toggle", type: "button", "aria-pressed": "false" }, wrap, eq);
+  /* ---------- таймер фокусу (помодоро) ----------
+     Рахується за часом завершення, тому не зупиняється при переході між сторінками чи вкладками. */
+  const FOCUS_MIN = 25, FOCUS_REWARD = 15;
+  function checkFocus() {
+    const S = load(), f = S.focus;
+    if (!f || Date.now() < f.end) return false;
+    S.focus = null; S.focusDone = (S.focusDone || 0) + 1; save();
+    addCoins(FOCUS_REWARD);
+    toast(`Сесію фокусу завершено: +${FOCUS_REWARD} 🪙. Відпочиньте 5 хвилин ☕`);
+    window.dispatchEvent(new CustomEvent("edki:focus"));
+    return true;
+  }
+  function buildFocusTimer() {
+    const R = 15, CIRC = 2 * Math.PI * R;
+    const ring = s("circle", { cx: 18, cy: 18, r: R, class: "fr-ring", "stroke-dasharray": CIRC, "stroke-dashoffset": CIRC });
+    const track = s("circle", { cx: 18, cy: 18, r: R, class: "fr-track" });
+    const svg = s("svg", { viewBox: "0 0 36 36", class: "fr-svg", "aria-hidden": "true" }); svg.append(track, ring);
+    const label = h("span", { class: "fl" });
+    const btn = h("button", { class: "focus-btn", type: "button" }, h("span", { class: "fr" }, svg, h("span", { class: "fi", text: "⏱" })), label);
     const paint = () => {
-      const it = itemById(load().equipped.track);
-      btn.classList.toggle("on", music.on); btn.classList.toggle("pending", music.pending);
-      btn.setAttribute("aria-pressed", String(music.on));
-      btn.setAttribute("aria-label", music.on ? "Вимкнути музику" : "Увімкнути музику");
-      btn.title = `${it.name}: ${music.on ? "вимкнути" : music.pending ? "натисніть, щоб відновити" : "увімкнути"}`;
-      disc.firstChild.textContent = it.emoji;
+      const f = load().focus;
+      btn.classList.toggle("on", !!f);
+      if (f) {
+        const left = Math.max(0, f.end - Date.now());
+        ring.setAttribute("stroke-dashoffset", String(CIRC * (left / f.dur)));
+        label.textContent = fmtTime(left / 1000);
+        btn.title = "Фокус-сесія триває. Натисніть, щоб скасувати"; btn.setAttribute("aria-label", "Скасувати сесію фокусу, залишилось " + fmtTime(left / 1000));
+      } else {
+        ring.setAttribute("stroke-dashoffset", String(CIRC)); label.textContent = "Фокус";
+        btn.title = `Запустити таймер фокусу на ${FOCUS_MIN} хв (+${FOCUS_REWARD} 🪙 за завершення)`; btn.setAttribute("aria-label", `Запустити таймер фокусу на ${FOCUS_MIN} хвилин`);
+      }
     };
-    btn.addEventListener("click", () => music.toggle());
-    window.addEventListener("edki:music", paint); window.addEventListener("edki:equip", paint);
-    setInterval(() => {
-      const e = music.elapsed;
-      ring.setAttribute("stroke-dashoffset", String(CIRC * (1 - Math.min(1, (e % POMO) / POMO))));
-      if (music.on && e >= POMO && !btn._p) { btn._p = 1; toast("25 хвилин навчання! Зробіть перерву на 5 хвилин ☕"); }
-      if (e < POMO) btn._p = 0;
-    }, 1000);
+    btn.addEventListener("click", async () => {
+      const S = load();
+      if (!S.focus) {
+        S.focus = { end: Date.now() + FOCUS_MIN * 60000, dur: FOCUS_MIN * 60000 }; save();
+        toast(`Фокус ${FOCUS_MIN} хв розпочато. Не відволікайтеся!`);
+      } else if (await modal("Скасувати сесію?", `Нагороду +${FOCUS_REWARD} 🪙 буде втрачено.`, [{ label: "Скасувати сесію", value: true, cls: "danger" }, { label: "Продовжити", value: false }])) {
+        S.focus = null; save();
+      }
+      paint();
+    });
+    setInterval(() => { checkFocus(); paint(); }, 1000);
+    window.addEventListener("edki:focus", paint);
     paint();
     return btn;
   }
@@ -595,5 +512,5 @@
   applyTheme();
   document.addEventListener("DOMContentLoaded", buildHeader);
 
-  window.EDKI = { LETTERS, Q, TOPICS, byId, topicName, load, save, record, replaceState, shuffle, h, pct, fmtTime, fmtDate, prepare, questionCard, modal, createSpring, reduceMotion, aiPrompt, copyButton, todayKey, streak, isMarked, toggleMark, mastery, topicIcon, markButton, confetti, ITEMS, MILESTONES, itemById, addCoins, buy, equip, claim, toast, music, KEY };
+  window.EDKI = { LETTERS, Q, TOPICS, byId, topicName, load, save, record, replaceState, shuffle, h, pct, fmtTime, fmtDate, prepare, questionCard, modal, createSpring, reduceMotion, aiPrompt, copyButton, todayKey, streak, isMarked, toggleMark, mastery, topicIcon, markButton, confetti, ITEMS, MILESTONES, itemById, addCoins, buy, equip, claim, toast, KEY };
 })();
