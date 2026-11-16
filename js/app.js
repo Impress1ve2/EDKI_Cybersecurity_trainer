@@ -449,7 +449,9 @@
     const track = s("circle", { cx: 18, cy: 18, r: R, class: "fr-track" });
     const svg = s("svg", { viewBox: "0 0 36 36", class: "fr-svg", "aria-hidden": "true" }); svg.append(track, ring);
     const label = h("span", { class: "fl" });
-    const btn = h("button", { class: "focus-btn", type: "button" }, h("span", { class: "fr" }, svg, h("span", { class: "fi", text: "⏱" })), label);
+    const btn = h("button", { class: "focus-btn", type: "button" }, h("span", { class: "fr" }, svg, (() => { const i = s("svg", { viewBox: "0 0 24 24", class: "fi", "aria-hidden": "true" });
+      i.append(s("circle", { cx: 12, cy: 13, r: 6.5, fill: "none", stroke: "currentColor", "stroke-width": 2 }),
+        s("path", { d: "M12 13V9.5M10 3.5h4", fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round" })); return i; })()), label);
     const paint = () => {
       const f = load().focus;
       btn.classList.toggle("on", !!f);

@@ -73,7 +73,7 @@
       if (E.limitSec && E.spent >= E.limitSec) { finish(E, true); }
     }
     function paintTimer() {
-      if (!E.limitSec) { timerEl.textContent = "⏱ " + fmtTime(E.spent); return; }
+      if (!E.limitSec) { timerEl.textContent = "Час: " + fmtTime(E.spent); return; }
       const left = E.limitSec - E.spent;
       timerEl.textContent = "⏳ " + fmtTime(left);
       timerEl.classList.toggle("low", left <= 300);

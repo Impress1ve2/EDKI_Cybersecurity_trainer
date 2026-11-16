@@ -303,7 +303,7 @@ h2::after{content:"";flex:1;height:1px;background:var(--line)}
 .fr-svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
 .fr-track{fill:none;stroke:var(--line);stroke-width:3}
 .fr-ring{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
-.focus-btn .fi{font-size:14px}
+.focus-btn .fi{width:15px;height:15px;color:var(--accent)}
 
 /* ===== фони з магазину ===== */
 html[data-bg="grid"] body{background:linear-gradient(color-mix(in srgb,var(--line) 80%,transparent) 1px,transparent 1px) 0 0/34px 34px,linear-gradient(90deg,color-mix(in srgb,var(--line) 80%,transparent) 1px,transparent 1px) 0 0/34px 34px,radial-gradient(900px 420px at 85% -80px,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%),var(--bg);background-attachment:fixed}

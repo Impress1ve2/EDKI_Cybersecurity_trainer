@@ -49,7 +49,7 @@
         h("div", { class: "rules" },
           h("span", { class: "pill", text: "+1 за правильну відповідь" }), h("span", { class: "pill", text: "+10 за ціль дня" }),
           h("span", { class: "pill", text: "+25 за склавши симулятор" }), h("span", { class: "pill", text: "+15 за 25 хв фокусу" }),
-          h("span", { class: "pill", text: `🧊 заморозок: ${S.freezes || 0}` }), h("span", { class: "pill", text: `⏱ сесій фокусу: ${S.focusDone || 0}` }),
+          h("span", { class: "pill", text: `🧊 заморозок: ${S.freezes || 0}` }), h("span", { class: "pill", text: `🎯 сесій фокусу: ${S.focusDone || 0}` }),
           h("span", { class: "pill", text: `🔥 серія: ${streak()} (рекорд ${best})` }))),
       h("h2", { text: "Нагороди за серію" }),
       h("div", { class: "grid cols-4" }, ms),
