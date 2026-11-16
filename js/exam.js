@@ -146,6 +146,7 @@
     const S = load();
     S.history.unshift(res); S.history = S.history.slice(0, 100);
     S.exam = null; save();
+    if (res.pct >= 60) { EDKI.addCoins(25); EDKI.toast("Симулятор складено: +25 🪙"); }
     renderResult(res, rows, timeUp);
   }
 

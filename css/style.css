@@ -256,3 +256,65 @@ h2::after{content:"";flex:1;height:1px;background:var(--line)}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
 .confetti i{position:absolute;top:-16px;width:8px;height:14px;border-radius:2px;animation:fall linear forwards}
 @keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--r))}}
+
+/* ===== кольорові теми з магазину ===== */
+:root[data-accent]{--accent:var(--a);--accent-ink:#fff;--accent-soft:color-mix(in srgb,var(--a) 13%,var(--surface))}
+:root[data-accent][data-theme="dark"]{--accent:color-mix(in srgb,var(--a) 62%,#fff);--accent-ink:#0b1020}
+@media (prefers-color-scheme:dark){:root[data-accent]:not([data-theme="light"]){--accent:color-mix(in srgb,var(--a) 62%,#fff);--accent-ink:#0b1020}}
+
+/* ===== шапка: монети, значок, музика ===== */
+.goo-blobs,.goo-links{height:380px}
+.coin-chip{position:relative;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.coin-chip:hover{background:var(--surface-2)}
+.coin-chip .plus{position:absolute;right:6px;top:-6px;color:var(--ok);font-weight:800;animation:plus 1.1s ease-out forwards;pointer-events:none}
+@keyframes plus{from{opacity:1;transform:translateY(8px)}to{opacity:0;transform:translateY(-16px)}}
+.hbadge{font-size:20px;line-height:1;cursor:default}
+.music-toggle{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;padding:0 2px;cursor:pointer;color:var(--ink);border-radius:99px}
+.mt-wrap{position:relative;width:40px;height:40px;display:grid;place-items:center}
+.mt-svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.mt-track{fill:none;stroke:var(--line);stroke-width:2.5}
+.mt-ring{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round}
+.mt-disc{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  background:repeating-radial-gradient(circle,#1b2030 0 2px,#262c40 2px 4px);box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.mt-art{width:16px;height:16px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-size:9px;line-height:1}
+.music-toggle.on .mt-disc{animation:spin 3.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mt-ic{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);
+  transition:opacity .25s,transform .35s cubic-bezier(.3,1.5,.5,1)}
+.mt-pause{opacity:0;transform:scale(.4) rotate(-90deg);font-size:9px;letter-spacing:-1px}
+.music-toggle.on .mt-play{opacity:0;transform:scale(.4) rotate(90deg)}
+.music-toggle.on .mt-pause{opacity:1;transform:none}
+.music-toggle:not(.on):not(:hover):not(:focus-visible) .mt-ic{opacity:0;transform:scale(.6)}
+.music-toggle.pending .mt-wrap{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.1)}}
+.eq{display:flex;align-items:center;gap:2px;height:18px}
+.eq i{width:3px;height:3px;border-radius:2px;background:var(--accent);transition:height .3s}
+.music-toggle.on .eq i{animation:eq 0.9s ease-in-out infinite}
+.music-toggle.on .eq i:nth-child(2){animation-delay:-.3s}.music-toggle.on .eq i:nth-child(3){animation-delay:-.6s}.music-toggle.on .eq i:nth-child(4){animation-delay:-.15s}
+@keyframes eq{0%,100%{height:3px}50%{height:16px}}
+@media (max-width:620px){.eq{display:none}.coin-chip{padding:5px 9px}}
+@media (prefers-reduced-motion:reduce){.music-toggle.on .mt-disc,.music-toggle.on .eq i,.music-toggle.pending .mt-wrap{animation:none}.music-toggle.on .eq i{height:10px}}
+
+/* ===== тост ===== */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:70;background:var(--ink);color:var(--bg);
+  padding:11px 18px;border-radius:12px;font-weight:600;box-shadow:var(--shadow);animation:toast .4s cubic-bezier(.3,1.4,.5,1) both}
+.toast.out{opacity:0;transition:opacity .4s}
+@keyframes toast{from{opacity:0;transform:translate(-50%,16px)}}
+
+/* ===== магазин ===== */
+.wallet{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.wallet .big{display:block;font-size:34px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.rules{display:flex;gap:8px;flex-wrap:wrap}
+.item{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.item.on{border-color:var(--accent)}
+.item .grow{flex:1}
+.item .btn{width:100%;margin-top:8px}
+.pv{display:grid;place-items:center;width:54px;height:54px;border-radius:15px;background:var(--accent-soft);font-size:28px;margin-bottom:4px}
+.pv.sw{color:#fff;box-shadow:inset 0 -6px 12px rgba(0,0,0,.18)}
+.player{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.vol{display:flex;align-items:center;gap:8px}
+.vol input{accent-color:var(--accent);width:120px}
+.ms.ready{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft),var(--shadow)}
+.ms.done{opacity:.7}
+.bar .a{background:var(--accent)}
